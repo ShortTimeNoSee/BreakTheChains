@@ -177,132 +177,134 @@ p {font-size:1rem; font-weight:300; max-width:700px; margin:0.5rem auto;}
 <script>
 gsap.registerPlugin(ScrollTrigger);
 
+// Audio setup
 const wavesAudio = document.getElementById('audioWaves');
 const chantsAudio = document.getElementById('audioChants');
 const drumsAudio = document.getElementById('audioDrums');
 
-let audioUnlocked = false;
+[wavesAudio, chantsAudio, drumsAudio].forEach(audio => {
+    audio.volume = 0;
+});
 
-function attemptAudioUnlock() {
-  if (!audioUnlocked) {
-    // Attempt to play all silently first
-    wavesAudio.volume = 0; chantsAudio.volume = 0; drumsAudio.volume = 0;
-    let p1 = wavesAudio.play().catch(() => {});
-    let p2 = chantsAudio.play().catch(() => {});
-    let p3 = drumsAudio.play().catch(() => {});
-    Promise.allSettled([p1, p2, p3]).then(() => {
-      audioUnlocked = true;
-      updateAudioBasedOnVisibility();
-    });
-  }
+let audioInitialized = false;
+
+async function initializeAudio() {
+    if (audioInitialized) return;
+    
+    try {
+        await Promise.all([
+            wavesAudio.play(),
+            chantsAudio.play(),
+            drumsAudio.play()
+        ]);
+        
+        audioInitialized = true;
+        console.log('Audio initialized');
+        updateAudioBasedOnVisibility();
+    } catch (error) {
+        console.log('Audio initialization failed:', error);
+    }
 }
 
-// Add event listeners for audio unlocking
-document.addEventListener('click', attemptAudioUnlock);
-document.addEventListener('scroll', attemptAudioUnlock);
-document.addEventListener('mousemove', attemptAudioUnlock);
-document.addEventListener('touchstart', attemptAudioUnlock);
-window.addEventListener('focus', attemptAudioUnlock);
-setTimeout(attemptAudioUnlock, 3000);
+// Add multiple chances to initialize audio
+document.addEventListener('click', initializeAudio);
+document.addEventListener('touchstart', initializeAudio);
+document.addEventListener('scroll', initializeAudio);
 
-// Function to calculate visible area of an element
-function getVisibleArea(element) {
-  const rect = element.getBoundingClientRect();
-  const windowHeight = window.innerHeight;
-  
-  // If element is completely above or below viewport, return 0
-  if (rect.bottom <= 0 || rect.top >= windowHeight) {
-    return 0;
-  }
-  
-  // Calculate visible height
-  const visibleTop = Math.max(0, rect.top);
-  const visibleBottom = Math.min(windowHeight, rect.bottom);
-  const visibleHeight = visibleBottom - visibleTop;
-  
-  // Return visible area as percentage of viewport height
-  return (visibleHeight / windowHeight) * 100;
+// Calculate which section is most visible
+function getVisiblePercentage(element) {
+    const rect = element.getBoundingClientRect();
+    const windowHeight = window.innerHeight;
+    
+    // If the element is not in view at all
+    if (rect.bottom < 0 || rect.top > windowHeight) {
+        return 0;
+    }
+    
+    const visibleTop = Math.max(0, rect.top);
+    const visibleBottom = Math.min(windowHeight, rect.bottom);
+    const visibleHeight = visibleBottom - visibleTop;
+    
+    return (visibleHeight / windowHeight) * 100;
 }
 
-// Function to determine which section is most visible
 function getMostVisibleSection() {
-  const sections = {
-    waves: [
-      document.getElementById('titleSection'),
-      document.getElementById('actI')
-    ],
-    chants: [
-      document.getElementById('actII')
-    ],
-    drums: [
-      document.getElementById('actIII'),
-      document.getElementById('particleSection')
-    ]
-  };
-  
-  const visibleAreas = {
-    waves: Math.max(...sections.waves.map(section => getVisibleArea(section))),
-    chants: Math.max(...sections.chants.map(section => getVisibleArea(section))),
-    drums: Math.max(...sections.drums.map(section => getVisibleArea(section)))
-  };
-  
-  console.log('Visible areas:', visibleAreas); // For debugging
-  
-  // Find the section with the highest visibility percentage
-  const maxArea = Math.max(...Object.values(visibleAreas));
-  const mostVisible = Object.keys(visibleAreas).find(key => visibleAreas[key] === maxArea);
-  
-  // Only return if the section has significant visibility (more than 10%)
-  return maxArea > 10 ? mostVisible : null;
+    const sections = {
+        waves: [
+            document.getElementById('titleSection'),
+            document.getElementById('actI')
+        ],
+        chants: [
+            document.getElementById('actII')
+        ],
+        drums: [
+            document.getElementById('actIII'),
+            document.getElementById('particleSection')
+        ]
+    };
+
+    let maxVisibility = {
+        waves: Math.max(...sections.waves.map(getVisiblePercentage)),
+        chants: Math.max(...sections.chants.map(getVisiblePercentage)),
+        drums: Math.max(...sections.drums.map(getVisiblePercentage))
+    };
+
+    // Find the largest visible section
+    let maxValue = Math.max(...Object.values(maxVisibility));
+    
+    // Return the corresponding section type
+    return maxValue > 20 ? 
+           Object.entries(maxVisibility).find(([_, value]) => value === maxValue)[0] 
+           : null;
 }
 
-// Function to update audio based on visibility
 function updateAudioBasedOnVisibility() {
-  if (!audioUnlocked) return;
-  
-  const mostVisible = getMostVisibleSection();
-  console.log('Most visible section:', mostVisible); // For debugging
-  
-  // Target volumes based on most visible section
-  const targetVolumes = {
-    waves: mostVisible === 'waves' ? 1 : 0,
-    chants: mostVisible === 'chants' ? 1 : 0,
-    drums: mostVisible === 'drums' ? 1 : 0
-  };
-  
-  // Smoothly transition volumes
-  gsap.to(wavesAudio, { volume: targetVolumes.waves, duration: 0.5 });
-  gsap.to(chantsAudio, { volume: targetVolumes.chants, duration: 0.5 });
-  gsap.to(drumsAudio, { volume: targetVolumes.drums, duration: 0.5 });
+    if (!audioInitialized) return;
+
+    const dominantSection = getMostVisibleSection();
+    console.log('Dominant section:', dominantSection);
+
+    // Set target volumes
+    let targets = {
+        waves: dominantSection === 'waves' ? 1 : 0,
+        chants: dominantSection === 'chants' ? 1 : 0,
+        drums: dominantSection === 'drums' ? 1 : 0
+    };
+
+    // First set immediate volumes
+    wavesAudio.volume = targets.waves;
+    chantsAudio.volume = targets.chants;
+    drumsAudio.volume = targets.drums;
+
+    // Then do smooth transitions
+    gsap.to(wavesAudio, { volume: targets.waves, duration: 0.5 });
+    gsap.to(chantsAudio, { volume: targets.chants, duration: 0.5 });
+    gsap.to(drumsAudio, { volume: targets.drums, duration: 0.5 });
 }
 
-// Throttle the scroll updates to improve performance
+// Handle scroll events with throttling
 let scrollTimeout;
 window.addEventListener('scroll', () => {
-  if (!scrollTimeout) {
-    scrollTimeout = setTimeout(() => {
-      updateAudioBasedOnVisibility();
-      scrollTimeout = null;
-    }, 100);
-  }
+    if (!scrollTimeout) {
+        scrollTimeout = setTimeout(() => {
+            updateAudioBasedOnVisibility();
+            scrollTimeout = null;
+        }, 100);
+    }
 });
 
-// Update on resize
-window.addEventListener('resize', () => {
-  requestAnimationFrame(updateAudioBasedOnVisibility);
-});
+// Handle window resize
+window.addEventListener('resize', updateAudioBasedOnVisibility);
 
-// Initial update
-updateAudioBasedOnVisibility();
-
-// Particle animation code below stays exactly the same
+// Particle system setup
 const quoteLines = [
-  '"I prayed for twenty years but',
-  'received no answer until',
-  'I prayed with my legs."',
-  '– Frederick Douglass'
+    '"I prayed for twenty years but',
+    'received no answer until',
+    'I prayed with my legs."',
+    '– Frederick Douglass'
 ];
 
+// Canvas setup
 const canvas = document.getElementById('particleCanvas');
 const ctx = canvas.getContext('2d');
 let W = window.innerWidth;
@@ -310,172 +312,192 @@ let H = window.innerHeight;
 canvas.width = W;
 canvas.height = H;
 
+// Handle window resize for canvas
 window.addEventListener('resize', () => {
-  W = window.innerWidth;
-  H = window.innerHeight;
-  canvas.width = W;
-  canvas.height = H;
-  prepareTextPoints();
-  resetParticles();
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W;
+    canvas.height = H;
+    prepareTextPoints();
+    resetParticles();
 });
 
+// Text points preparation
 let textPoints = [];
 function prepareTextPoints() {
-  let offCanvas = document.createElement('canvas');
-  let offCtx = offCanvas.getContext('2d');
-  offCanvas.width = W;
-  offCanvas.height = H;
-  offCtx.fillStyle = '#000';
-  offCtx.fillRect(0, 0, W, H);
-
-  let fontSize = Math.min(W/15, 40);
-  offCtx.font = `bold ${fontSize}px Montserrat`;
-  offCtx.textAlign = 'center';
-  offCtx.textBaseline = 'middle';
-  const lineHeight = fontSize * 1.3;
-  const totalHeight = lineHeight * quoteLines.length;
-  let startY = H/2 - totalHeight/2;
-  offCtx.fillStyle = '#fff';
-  for (let i = 0; i < quoteLines.length; i++) {
-    offCtx.fillText(quoteLines[i], W/2, startY + i*lineHeight);
-  }
-
-  let imageData = offCtx.getImageData(0, 0, W, H).data;
-  textPoints = [];
-  let step = 3;
-  for (let y = 0; y < H; y += step) {
-    for (let x = 0; x < W; x += step) {
-      let index = (y*W + x)*4;
-      if (imageData[index] > 200) {
-        textPoints.push({x: x, y: y});
-      }
+    const offCanvas = document.createElement('canvas');
+    const offCtx = offCanvas.getContext('2d');
+    offCanvas.width = W;
+    offCanvas.height = H;
+    
+    // Clear background
+    offCtx.fillStyle = '#000';
+    offCtx.fillRect(0, 0, W, H);
+    
+    // Setup text
+    const fontSize = Math.min(W/15, 40);
+    offCtx.font = `bold ${fontSize}px Montserrat`;
+    offCtx.textAlign = 'center';
+    offCtx.textBaseline = 'middle';
+    
+    // Calculate text positioning
+    const lineHeight = fontSize * 1.3;
+    const totalHeight = lineHeight * quoteLines.length;
+    const startY = H/2 - totalHeight/2;
+    
+    // Draw text
+    offCtx.fillStyle = '#fff';
+    quoteLines.forEach((line, i) => {
+        offCtx.fillText(line, W/2, startY + i*lineHeight);
+    });
+    
+    // Extract points
+    const imageData = offCtx.getImageData(0, 0, W, H).data;
+    textPoints = [];
+    const step = 3;
+    
+    for (let y = 0; y < H; y += step) {
+        for (let x = 0; x < W; x += step) {
+            if (imageData[(y*W + x)*4] > 200) {
+                textPoints.push({x, y});
+            }
+        }
     }
-  }
 }
+
+// Initialize text points
 prepareTextPoints();
 
+// Particle system
 const particles = [];
-let numParticles = Math.min(2500, textPoints.length);
+const numParticles = Math.min(2500, textPoints.length);
 const centerX = W/2;
 const centerY = H/2;
 
 function resetParticles() {
-  particles.length = 0;
-  for (let i = 0; i < numParticles; i++) {
-    particles.push({
-      x: centerX + (Math.random()*10-5),
-      y: centerY + (Math.random()*10-5),
-      vx: 0,
-      vy: 0,
-      targetIndex: null
-    });
-  }
+    particles.length = 0;
+    for (let i = 0; i < numParticles; i++) {
+        particles.push({
+            x: centerX + (Math.random()*10-5),
+            y: centerY + (Math.random()*10-5),
+            vx: 0,
+            vy: 0,
+            targetIndex: null
+        });
+    }
 }
+
 resetParticles();
 
-// Phases: clumped -> scatter -> swirl -> form text
+// Animation phases
 let phase = 'clumped';
 let particlesReady = false;
 let interacted = false;
 
 ScrollTrigger.create({
-  trigger: "#particleSection",
-  start: "top center",
-  onEnter: () => {
-    particlesReady = true;
-  }
+    trigger: "#particleSection",
+    start: "top center",
+    onEnter: () => {
+        particlesReady = true;
+    }
 });
 
+// Phase transitions
 function startScatter() {
-  if (phase !== 'clumped') return;
-  phase = 'scatter';
-  for (let p of particles) {
-    p.vx = (Math.random()-0.5)*20;
-    p.vy = (Math.random()-0.5)*20;
-  }
-  setTimeout(startSwirl, 1500);
+    if (phase !== 'clumped') return;
+    phase = 'scatter';
+    particles.forEach(p => {
+        p.vx = (Math.random()-0.5)*20;
+        p.vy = (Math.random()-0.5)*20;
+    });
+    setTimeout(startSwirl, 1500);
 }
 
 function startSwirl() {
-  if (phase !== 'scatter') return;
-  phase = 'swirl';
-  setTimeout(formText, 2000);
+    if (phase !== 'scatter') return;
+    phase = 'swirl';
+    setTimeout(formText, 2000);
 }
 
 function formText() {
-  if (phase !== 'swirl') return;
-  phase = 'form';
-  for (let i = 0; i < particles.length; i++) {
-    particles[i].targetIndex = i % textPoints.length;
-  }
+    if (phase !== 'swirl') return;
+    phase = 'form';
+    particles.forEach((p, i) => {
+        p.targetIndex = i % textPoints.length;
+    });
 }
 
-function onParticleInteract(e) {
-  if (!particlesReady) return;
-  if (interacted) return;
-  interacted = true;
-  startScatter();
+// Interaction handling
+function onParticleInteract() {
+    if (!particlesReady || interacted) return;
+    interacted = true;
+    startScatter();
 }
 
 document.getElementById('particleSection').addEventListener('mousemove', onParticleInteract);
 document.getElementById('particleSection').addEventListener('touchstart', onParticleInteract);
 document.getElementById('particleSection').addEventListener('click', onParticleInteract);
 
+// Animation loop
 function animate() {
-  ctx.clearRect(0, 0, W, H);
-
-  if (phase === 'clumped') {
-    for (let p of particles) {
-      ctx.fillStyle = '#f00';
-      ctx.fillRect(p.x, p.y, 2, 2);
-    }
-  } else if (phase === 'scatter') {
-    for (let p of particles) {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vx *= 0.95;
-      p.vy *= 0.95;
-      ctx.fillStyle = '#f00';
-      ctx.fillRect(p.x, p.y, 2, 2);
-    }
-  } else if (phase === 'swirl') {
-    for (let p of particles) {
-      let dx = p.x - centerX;
-      let dy = p.y - centerY;
-      let angle = Math.atan2(dy, dx);
-      p.vx += -Math.sin(angle)*0.5;
-      p.vy += Math.cos(angle)*0.5;
-      let dist = Math.sqrt(dx*dx + dy*dy);
-      let pull = (200 - dist)*0.002;
-      if (pull > 0) {
-        p.vx -= dx*pull;
-        p.vy -= dy*pull;
-      }
-      p.vx *= 0.95;
-      p.vy *= 0.95;
-      p.x += p.vx;
-      p.y += p.vy;
-      ctx.fillStyle = '#f00';
-      ctx.fillRect(p.x, p.y, 2, 2);
-    }
-  } else if (phase === 'form') {
-    for (let p of particles) {
-      let tp = textPoints[p.targetIndex];
-      let dx = tp.x - p.x;
-      let dy = tp.y - p.y;
-      p.vx += dx*0.02;
-      p.vy += dy*0.02;
-      p.vx *= 0.8;
-      p.vy *= 0.8;
-      p.x += p.vx;
-      p.y += p.vy;
-      ctx.fillStyle = '#f00';
-      ctx.fillRect(p.x, p.y, 2, 2);
-    }
-  }
-
-  requestAnimationFrame(animate);
+    ctx.clearRect(0, 0, W, H);
+    
+    particles.forEach(p => {
+        ctx.fillStyle = '#f00';
+        
+        switch(phase) {
+            case 'clumped':
+                ctx.fillRect(p.x, p.y, 2, 2);
+                break;
+                
+            case 'scatter':
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx *= 0.95;
+                p.vy *= 0.95;
+                ctx.fillRect(p.x, p.y, 2, 2);
+                break;
+                
+            case 'swirl':
+                const dx = p.x - centerX;
+                const dy = p.y - centerY;
+                const angle = Math.atan2(dy, dx);
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                p.vx += -Math.sin(angle)*0.5;
+                p.vy += Math.cos(angle)*0.5;
+                
+                const pull = (200 - dist)*0.002;
+                if (pull > 0) {
+                    p.vx -= dx*pull;
+                    p.vy -= dy*pull;
+                }
+                
+                p.vx *= 0.95;
+                p.vy *= 0.95;
+                p.x += p.vx;
+                p.y += p.vy;
+                ctx.fillRect(p.x, p.y, 2, 2);
+                break;
+                
+            case 'form':
+                const target = textPoints[p.targetIndex];
+                const tdx = target.x - p.x;
+                const tdy = target.y - p.y;
+                p.vx += tdx*0.02;
+                p.vy += tdy*0.02;
+                p.vx *= 0.8;
+                p.vy *= 0.8;
+                p.x += p.vx;
+                p.y += p.vy;
+                ctx.fillRect(p.x, p.y, 2, 2);
+                break;
+        }
+    });
+    
+    requestAnimationFrame(animate);
 }
+
 animate();
 </script>
 </body>
