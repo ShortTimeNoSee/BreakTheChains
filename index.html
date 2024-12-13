@@ -112,23 +112,37 @@ p {font-size:1rem; font-weight:300; max-width:700px; margin:0.5rem auto;}
  color:#ccc;
 }
 
-/* Add near the end of your style section */
 .start-audio-btn {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.8);
-  padding: 8px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 14px;
-  backdrop-filter: blur(5px);
-  transition: all 0.3s ease;
-  z-index: 1000;
-  opacity: 0;
-  pointer-events: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.8);
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 16px;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .start-audio-btn {
+        width: 40vw;
+        height: 6vw;
+        padding: 0;
+        line-height: 6vw;
+        font-size: 2.5vw;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        right: 50%;
+        transform: translateX(50%);
+    }
 }
 
 .start-audio-btn.visible {
