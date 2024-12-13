@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Break the Chains</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700;900&display=swap" rel="stylesheet">
+
+<style>
+html, body {
+ margin:0; padding:0;
+ font-family:'Montserrat',sans-serif;
+ background:#111;
+ color:#fff;
+ overflow-x:hidden;
+ scroll-behavior:smooth;
+}
+body {
+ min-height:100vh;
+}
+.section {
+ position:relative;
+ width:100%;
+ min-height:100vh;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ align-items:center;
+ padding:4rem 2rem;
+ text-align:center;
+}
+h1,h2,h3,p {
+ margin:0.5rem 0; line-height:1.4;
+}
+h1 {font-size:3rem; font-weight:900; letter-spacing:0.05em;}
+h2 {font-size:2rem; font-weight:700;}
+p {font-size:1rem; font-weight:300; max-width:700px; margin:0.5rem auto;}
+#titleSection {
+ background:#000;
+ overflow:hidden;
+ position:relative;
+}
+#titleSection h1 {
+ font-size:4rem;
+ margin-bottom:1rem;
+}
+#titleSection p {
+ font-size:1.2rem;
+ color:#aaa;
+}
+.act {
+ background-size:cover;
+ background-position:center;
+ background-attachment:fixed;
+ background-repeat:no-repeat;
+}
+#actI {background-image:url('middle_passage.jpg');}
+#actII {background-image:url('civil_rights.jpg');}
+#actIII {background-image:url('entrepreneurship.jpg');}
+.section-overlay {
+ background:rgba(0,0,0,0.5);
+ padding:2rem;
+ border-radius:8px;
+}
+.hover-layer {
+ position:absolute;top:0;left:0;right:0;bottom:0;
+ height: fit-content;
+ padding: 5px;
+ background:rgba(0,0,0,0.8);
+ display:flex;align-items:center;justify-content:center;flex-direction:column;
+ opacity:0;pointer-events:none;
+ transition:opacity 0.4s ease;
+}
+.hover-trigger {
+ position:relative;
+}
+.hover-trigger:hover .hover-layer {
+ opacity:1;pointer-events:all;
+}
+#particleSection {
+ position:relative;
+ background:#000;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ align-items:center;
+ overflow:hidden;
+ min-height:100vh;
+}
+#particleCanvas {
+ position:absolute;
+ top:0;
+ left:0;
+ width:100%;
+ height:100%;
+ z-index:1;
+}
+#footer {
+ background:#111;
+ padding:2rem;
+ text-align:center;
+ font-size:0.9rem;
+ color:#ccc;
+}
+@media (max-width:600px){
+ h1 {font-size:2rem;}
+ h2 {font-size:1.5rem;}
+ #titleSection h1 {font-size:3rem;}
+}
+</style>
+</head>
+<body>
+
+<audio id="audioWaves" src="waves.mp3" preload="auto" loop></audio>
+<audio id="audioChants" src="protest_chants.wav" preload="auto" loop></audio>
+<audio id="audioDrums" src="african_drums.wav" preload="auto" loop></audio>
+
+<section id="titleSection" class="section">
+ <div class="section-overlay">
+   <h1>Break the Chains</h1>
+   <p>From bondage to self-determination: A journey through oppression, resilience, and collective empowerment.</p>
+ </div>
+</section>
+
+<section id="actI" class="section act">
+ <div class="section-overlay">
+   <h2>Act I: Shackled Past</h2>
+   <p>The transatlantic slave trade forced millions into brutal conditions. Families torn apart, identities suppressed, futures stolen.</p>
+   <div class="hover-trigger" style="margin-top:2rem;display:inline-block;">
+     <p style="font-weight:700;">Hover to Reveal the Layers of History</p>
+     <div class="hover-layer">
+       <h3>Deconstruction of a Legacy</h3>
+       <p>Documents, logs, auctions. Yet resilience persisted in whispered prayers, hidden traditions, coded songs.</p>
+     </div>
+   </div>
+ </div>
+</section>
+
+<section id="actII" class="section act">
+ <div class="section-overlay">
+   <h2>Act II: The Long Fight</h2>
+   <p>From Reconstruction through Civil Rights, rights were demanded and seized, not granted.</p>
+   <div class="hover-trigger" style="margin-top:2rem;display:inline-block;">
+     <p style="font-weight:700;">Hover for the Rising Voices</p>
+     <div class="hover-layer">
+       <h3>The Chorus of Resistance</h3>
+       <p>Protests, marches, boycotts. Affirmations of worth reclaimed by collective action.</p>
+     </div>
+   </div>
+ </div>
+</section>
+
+<section id="actIII" class="section act">
+ <div class="section-overlay">
+   <h2>Act III: Unbroken Paths</h2>
+   <p>Modern innovators shape their futures, building prosperity and cultural wealth from within.</p>
+   <div class="hover-trigger" style="margin-top:2rem;display:inline-block;">
+     <p style="font-weight:700;">Hover to See Economic Sparks</p>
+     <div class="hover-layer">
+       <h3>Self-Determined Futures</h3>
+       <p>Sustainable progress arises from internal community strength.</p>
+     </div>
+   </div>
+ </div>
+</section>
+
+<section id="particleSection" class="section">
+ <canvas id="particleCanvas"></canvas>
+</section>
+
+<footer id="footer">
+ <p>Images & Audio: Public Domain or Freely Licensed<br/>Nicholas A. Thompson</p>
+</footer>
+
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+const wavesAudio = document.getElementById('audioWaves');
+const chantsAudio = document.getElementById('audioChants');
+const drumsAudio = document.getElementById('audioDrums');
+
+let audioUnlocked = false;
+
+function attemptAudioUnlock() {
+  if (!audioUnlocked) {
+    // Attempt to play all silently first
+    wavesAudio.volume = 0; chantsAudio.volume = 0; drumsAudio.volume = 0;
+    let p1 = wavesAudio.play().catch(() => {});
+    let p2 = chantsAudio.play().catch(() => {});
+    let p3 = drumsAudio.play().catch(() => {});
+    Promise.allSettled([p1, p2, p3]).then(() => {
+      audioUnlocked = true;
+      updateAudioBasedOnVisibility();
+    });
+  }
+}
+
+// Add event listeners for audio unlocking
+document.addEventListener('click', attemptAudioUnlock);
+document.addEventListener('scroll', attemptAudioUnlock);
+document.addEventListener('mousemove', attemptAudioUnlock);
+document.addEventListener('touchstart', attemptAudioUnlock);
+window.addEventListener('focus', attemptAudioUnlock);
+setTimeout(attemptAudioUnlock, 3000);
+
+// Function to calculate visible area of an element
+function getVisibleArea(element) {
+  const rect = element.getBoundingClientRect();
+  const windowHeight = window.innerHeight;
+  
+  // If element is completely above or below viewport, return 0
+  if (rect.bottom <= 0 || rect.top >= windowHeight) {
+    return 0;
+  }
+  
+  // Calculate visible height
+  const visibleTop = Math.max(0, rect.top);
+  const visibleBottom = Math.min(windowHeight, rect.bottom);
+  const visibleHeight = visibleBottom - visibleTop;
+  
+  // Return visible area as percentage of viewport height
+  return (visibleHeight / windowHeight) * 100;
+}
+
+// Function to determine which section is most visible
+function getMostVisibleSection() {
+  const sections = {
+    waves: [
+      document.getElementById('titleSection'),
+      document.getElementById('actI')
+    ],
+    chants: [
+      document.getElementById('actII')
+    ],
+    drums: [
+      document.getElementById('actIII'),
+      document.getElementById('particleSection')
+    ]
+  };
+  
+  const visibleAreas = {
+    waves: Math.max(...sections.waves.map(section => getVisibleArea(section))),
+    chants: Math.max(...sections.chants.map(section => getVisibleArea(section))),
+    drums: Math.max(...sections.drums.map(section => getVisibleArea(section)))
+  };
+  
+  console.log('Visible areas:', visibleAreas); // For debugging
+  
+  // Find the section with the highest visibility percentage
+  const maxArea = Math.max(...Object.values(visibleAreas));
+  const mostVisible = Object.keys(visibleAreas).find(key => visibleAreas[key] === maxArea);
+  
+  // Only return if the section has significant visibility (more than 10%)
+  return maxArea > 10 ? mostVisible : null;
+}
+
+// Function to update audio based on visibility
+function updateAudioBasedOnVisibility() {
+  if (!audioUnlocked) return;
+  
+  const mostVisible = getMostVisibleSection();
+  console.log('Most visible section:', mostVisible); // For debugging
+  
+  // Target volumes based on most visible section
+  const targetVolumes = {
+    waves: mostVisible === 'waves' ? 1 : 0,
+    chants: mostVisible === 'chants' ? 1 : 0,
+    drums: mostVisible === 'drums' ? 1 : 0
+  };
+  
+  // Smoothly transition volumes
+  gsap.to(wavesAudio, { volume: targetVolumes.waves, duration: 0.5 });
+  gsap.to(chantsAudio, { volume: targetVolumes.chants, duration: 0.5 });
+  gsap.to(drumsAudio, { volume: targetVolumes.drums, duration: 0.5 });
+}
+
+// Throttle the scroll updates to improve performance
+let scrollTimeout;
+window.addEventListener('scroll', () => {
+  if (!scrollTimeout) {
+    scrollTimeout = setTimeout(() => {
+      updateAudioBasedOnVisibility();
+      scrollTimeout = null;
+    }, 100);
+  }
+});
+
+// Update on resize
+window.addEventListener('resize', () => {
+  requestAnimationFrame(updateAudioBasedOnVisibility);
+});
+
+// Initial update
+updateAudioBasedOnVisibility();
+
+// Particle animation code below stays exactly the same
+const quoteLines = [
+  '"I prayed for twenty years but',
+  'received no answer until',
+  'I prayed with my legs."',
+  '– Frederick Douglass'
+];
+
+const canvas = document.getElementById('particleCanvas');
+const ctx = canvas.getContext('2d');
+let W = window.innerWidth;
+let H = window.innerHeight;
+canvas.width = W;
+canvas.height = H;
+
+window.addEventListener('resize', () => {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+  prepareTextPoints();
+  resetParticles();
+});
+
+let textPoints = [];
+function prepareTextPoints() {
+  let offCanvas = document.createElement('canvas');
+  let offCtx = offCanvas.getContext('2d');
+  offCanvas.width = W;
+  offCanvas.height = H;
+  offCtx.fillStyle = '#000';
+  offCtx.fillRect(0, 0, W, H);
+
+  let fontSize = Math.min(W/15, 40);
+  offCtx.font = `bold ${fontSize}px Montserrat`;
+  offCtx.textAlign = 'center';
+  offCtx.textBaseline = 'middle';
+  const lineHeight = fontSize * 1.3;
+  const totalHeight = lineHeight * quoteLines.length;
+  let startY = H/2 - totalHeight/2;
+  offCtx.fillStyle = '#fff';
+  for (let i = 0; i < quoteLines.length; i++) {
+    offCtx.fillText(quoteLines[i], W/2, startY + i*lineHeight);
+  }
+
+  let imageData = offCtx.getImageData(0, 0, W, H).data;
+  textPoints = [];
+  let step = 3;
+  for (let y = 0; y < H; y += step) {
+    for (let x = 0; x < W; x += step) {
+      let index = (y*W + x)*4;
+      if (imageData[index] > 200) {
+        textPoints.push({x: x, y: y});
+      }
+    }
+  }
+}
+prepareTextPoints();
+
+const particles = [];
+let numParticles = Math.min(2500, textPoints.length);
+const centerX = W/2;
+const centerY = H/2;
+
+function resetParticles() {
+  particles.length = 0;
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: centerX + (Math.random()*10-5),
+      y: centerY + (Math.random()*10-5),
+      vx: 0,
+      vy: 0,
+      targetIndex: null
+    });
+  }
+}
+resetParticles();
+
+// Phases: clumped -> scatter -> swirl -> form text
+let phase = 'clumped';
+let particlesReady = false;
+let interacted = false;
+
+ScrollTrigger.create({
+  trigger: "#particleSection",
+  start: "top center",
+  onEnter: () => {
+    particlesReady = true;
+  }
+});
+
+function startScatter() {
+  if (phase !== 'clumped') return;
+  phase = 'scatter';
+  for (let p of particles) {
+    p.vx = (Math.random()-0.5)*20;
+    p.vy = (Math.random()-0.5)*20;
+  }
+  setTimeout(startSwirl, 1500);
+}
+
+function startSwirl() {
+  if (phase !== 'scatter') return;
+  phase = 'swirl';
+  setTimeout(formText, 2000);
+}
+
+function formText() {
+  if (phase !== 'swirl') return;
+  phase = 'form';
+  for (let i = 0; i < particles.length; i++) {
+    particles[i].targetIndex = i % textPoints.length;
+  }
+}
+
+function onParticleInteract(e) {
+  if (!particlesReady) return;
+  if (interacted) return;
+  interacted = true;
+  startScatter();
+}
+
+document.getElementById('particleSection').addEventListener('mousemove', onParticleInteract);
+document.getElementById('particleSection').addEventListener('touchstart', onParticleInteract);
+document.getElementById('particleSection').addEventListener('click', onParticleInteract);
+
+function animate() {
+  ctx.clearRect(0, 0, W, H);
+
+  if (phase === 'clumped') {
+    for (let p of particles) {
+      ctx.fillStyle = '#f00';
+      ctx.fillRect(p.x, p.y, 2, 2);
+    }
+  } else if (phase === 'scatter') {
+    for (let p of particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.95;
+      p.vy *= 0.95;
+      ctx.fillStyle = '#f00';
+      ctx.fillRect(p.x, p.y, 2, 2);
+    }
+  } else if (phase === 'swirl') {
+    for (let p of particles) {
+      let dx = p.x - centerX;
+      let dy = p.y - centerY;
+      let angle = Math.atan2(dy, dx);
+      p.vx += -Math.sin(angle)*0.5;
+      p.vy += Math.cos(angle)*0.5;
+      let dist = Math.sqrt(dx*dx + dy*dy);
+      let pull = (200 - dist)*0.002;
+      if (pull > 0) {
+        p.vx -= dx*pull;
+        p.vy -= dy*pull;
+      }
+      p.vx *= 0.95;
+      p.vy *= 0.95;
+      p.x += p.vx;
+      p.y += p.vy;
+      ctx.fillStyle = '#f00';
+      ctx.fillRect(p.x, p.y, 2, 2);
+    }
+  } else if (phase === 'form') {
+    for (let p of particles) {
+      let tp = textPoints[p.targetIndex];
+      let dx = tp.x - p.x;
+      let dy = tp.y - p.y;
+      p.vx += dx*0.02;
+      p.vy += dy*0.02;
+      p.vx *= 0.8;
+      p.vy *= 0.8;
+      p.x += p.vx;
+      p.y += p.vy;
+      ctx.fillStyle = '#f00';
+      ctx.fillRect(p.x, p.y, 2, 2);
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>
