@@ -109,9 +109,39 @@ p {font-size:1rem; font-weight:300; max-width:700px; margin:0.5rem auto;}
  h2 {font-size:1.5rem;}
  #titleSection h1 {font-size:3rem;}
 }
+
+/* Add near the end of your style section */
+.start-audio-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.8);
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.start-audio-btn.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.start-audio-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
 </style>
 </head>
 <body>
+
+<button id="startAudioBtn" class="start-audio-btn">Enable Audio</button>
 
 <audio id="audioWaves" src="waves.mp3" preload="auto" loop></audio>
 <audio id="audioChants" src="protest_chants.wav" preload="auto" loop></audio>
@@ -181,17 +211,28 @@ gsap.registerPlugin(ScrollTrigger);
 const wavesAudio = document.getElementById('audioWaves');
 const chantsAudio = document.getElementById('audioChants');
 const drumsAudio = document.getElementById('audioDrums');
+const startAudioBtn = document.getElementById('startAudioBtn');
 
 [wavesAudio, chantsAudio, drumsAudio].forEach(audio => {
     audio.volume = 0;
 });
 
 let audioInitialized = false;
+let audioAttempts = 0;
+const MAX_AUTO_ATTEMPTS = 3;
+
+// Show button after delay if audio hasn't started
+setTimeout(() => {
+    if (!audioInitialized) {
+        startAudioBtn.classList.add('visible');
+    }
+}, 2000);
 
 async function initializeAudio() {
     if (audioInitialized) return;
     
     try {
+        // Try to start all audio tracks simultaneously
         await Promise.all([
             wavesAudio.play(),
             chantsAudio.play(),
@@ -199,17 +240,66 @@ async function initializeAudio() {
         ]);
         
         audioInitialized = true;
-        console.log('Audio initialized');
+        startAudioBtn.classList.remove('visible');
+        console.log('Audio initialized successfully');
         updateAudioBasedOnVisibility();
+        
     } catch (error) {
-        console.log('Audio initialization failed:', error);
+        console.log('Audio initialization attempt failed:', error);
+        audioAttempts++;
+        
+        if (audioAttempts >= MAX_AUTO_ATTEMPTS) {
+            startAudioBtn.classList.add('visible');
+        }
     }
 }
 
-// Add multiple chances to initialize audio
-document.addEventListener('click', initializeAudio);
-document.addEventListener('touchstart', initializeAudio);
-document.addEventListener('scroll', initializeAudio);
+// Button click handler
+startAudioBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await initializeAudio();
+});
+
+// Try to initialize on various user interactions
+const interactionEvents = ['click', 'touchstart', 'scroll', 'keydown'];
+interactionEvents.forEach(event => {
+    document.addEventListener(event, initializeAudio, { once: true });
+});
+
+// Try to initialize on visibility change
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        initializeAudio();
+    }
+});
+
+// Try to initialize on window focus
+window.addEventListener('focus', initializeAudio);
+
+// Try to initialize after a delay
+setTimeout(initializeAudio, 1000);
+
+// Try to initialize on mouse movement
+let mouseMoveDebounce;
+document.addEventListener('mousemove', () => {
+    if (!audioInitialized && !mouseMoveDebounce) {
+        mouseMoveDebounce = setTimeout(() => {
+            initializeAudio();
+            mouseMoveDebounce = null;
+        }, 500);
+    }
+});
+
+// Try to initialize on scroll with debounce
+let scrollDebounce;
+document.addEventListener('scroll', () => {
+    if (!audioInitialized && !scrollDebounce) {
+        scrollDebounce = setTimeout(() => {
+            initializeAudio();
+            scrollDebounce = null;
+        }, 500);
+    }
+}, { passive: true });
 
 // Calculate which section is most visible
 function getVisiblePercentage(element) {
